@@ -1,0 +1,42 @@
+#!/bin/bash
+#
+# Update 1-Wire sensors files
+# Supposed to be run from crontab
+#
+
+HOST=$(hostname)
+PREFIX='owread 28.'
+WHAT='temperature'
+BASE='/srv/w1/temperature'
+LOG='/var/log/update-sensors.log'
+
+declare -A S=( [kitchen]='659C55060000' [room]='978156060000' [heater]='3E3D5C060000' [ambient]='BE775C060000' )
+
+if [ -z "$1" ]; then
+  echo 'Usage: $0 < sensor_alias >'
+  exit 1
+fi
+
+ID=${S[$1]}
+
+if [ -z "$ID" ]; then
+
+  echo 'Unknown sensor!'
+  exit 1
+
+else
+
+  CMD="$PREFIX$ID/$WHAT"
+  RESULT=$($CMD 2>&1 | sed -e 's/^ *//')
+  STATUS=$?
+  STAMP=$(date "+%b %d %H:%M:%S")
+
+  if [ $STATUS == 0 -a "$RESULT" != 85 ]; then
+    OUT="$BASE/$1"
+    echo "$RESULT" >$OUT
+  fi
+
+  echo "$STAMP $HOST $1: $RESULT" >>$LOG
+
+fi
+
