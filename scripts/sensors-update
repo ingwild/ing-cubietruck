@@ -31,12 +31,12 @@ else
   RESULT=$($CMD 2>&1 | sed -e 's/^ *//')
   STATUS=$?
   STAMP=$(date "+%b %d %H:%M:%S")
-  SSTAMP=$(date -d "$STAMP" +%s)
+  SSE=$(date -d "$STAMP" +%s)
+  OUT="$BASE/$1"
 
   if [ $STATUS == 0 -a "$RESULT" != 85 ]; then
-    OUT="$BASE/$1"
     echo "$RESULT" >$OUT
-    $RRDUPDATE $BASE/$1.rrd $SSTAMP:$RESULT
+    $RRDUPDATE $BASE/$1.rrd $SSE:$RESULT
   fi
 
   echo "$STAMP $1: $RESULT" >>$LOG
