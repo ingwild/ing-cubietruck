@@ -1,0 +1,44 @@
+#!/bin/bash
+#
+# Create and populate RRD database
+#
+
+if [ -z "$1" ]; then
+  echo "Usage: $0 < sensor >"
+  exit 1
+fi
+
+LOG='/var/log/sensors.log'
+BASE='/srv/sensors'
+RRDTOOL='rrdtool';
+SENSOR=$1;
+RRD="$BASE/$SENSOR.rrd";
+
+if [ -r "$RRD" ]; then
+  rm $RRD
+fi
+
+$RRDTOOL create $RRD --start 1420063200 --step 300 \
+  DS:temp:GAUGE:600:-55:125 \
+  RRA:AVERAGE:0.5:1:105120 \
+  RRA:AVERAGE:0.5:12:8760 \
+  RRA:AVERAGE:0.5:288:365 \
+  RRA:AVERAGE:0.5:8760:12
+
+IFS='
+'
+for STR in $(cat $LOG); do
+
+  if [[ $STR =~ ^([a-zA-Z]{3}\ [0-9]{2}\ [0-9]{2}:[0-9]{2}:[0-9]{2})\ $SENSOR:\ ([-0-9\.]+)$ ]]; then
+
+    SSE=$(date +%s -d "${BASH_REMATCH[1]}")
+    VALUE=${BASH_REMATCH[2]}
+
+    if [ "$VALUE" != '85' ]; then
+      $RRDTOOL update $RRD $SSE:$VALUE
+    fi
+
+  fi
+
+done
+

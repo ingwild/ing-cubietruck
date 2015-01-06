@@ -9,11 +9,12 @@ PREFIX='owread 28.'
 WHAT='temperature'
 BASE='/srv/sensors'
 LOG='/var/log/sensors.log'
+RRDUPDATE='rrdupdate'
 
 declare -A S=( [kitchen]='659C55060000' [room]='978156060000' [heater]='3E3D5C060000' [ambient]='BE775C060000' )
 
 if [ -z "$1" ]; then
-  echo "Usage: $0 < sensor_alias >"
+  echo "Usage: $0 < sensor >"
   exit 1
 fi
 
@@ -30,13 +31,15 @@ else
   RESULT=$($CMD 2>&1 | sed -e 's/^ *//')
   STATUS=$?
   STAMP=$(date "+%b %d %H:%M:%S")
+  SSTAMP=$(date -d "$STAMP" +%s)
 
   if [ $STATUS == 0 -a "$RESULT" != 85 ]; then
     OUT="$BASE/$1"
     echo "$RESULT" >$OUT
+    $RRDUPDATE $BASE/$1.rrd $SSTAMP:$RESULT
   fi
 
-  echo "$STAMP $HOST $1: $RESULT" >>$LOG
+  echo "$STAMP $1: $RESULT" >>$LOG
 
 fi
 
