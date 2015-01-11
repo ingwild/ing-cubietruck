@@ -11,7 +11,7 @@ BASE='/srv/sensors'
 LOG='/var/log/sensors.log'
 RRDUPDATE='rrdupdate'
 
-declare -A S=( [kitchen]='659C55060000' [room]='978156060000' [heater]='3E3D5C060000' [ambient]='BE775C060000' )
+declare -A S=( [kitchen]='659C55060000' [room]='978156060000' [heater]='3E3D5C060000' [ambient]='BE775C060000' [freezer]='898056060000' )
 
 if [ -z "$1" ]; then
   echo "Usage: $0 < sensor >"
@@ -33,10 +33,11 @@ else
   STAMP=$(date "+%b %d %H:%M:%S")
   SSE=$(date -d "$STAMP" +%s)
   OUT="$BASE/$1"
+  RRD=$BASE/$1.rrd
 
   if [ $STATUS == 0 -a "$RESULT" != 85 ]; then
     echo "$RESULT" >$OUT
-    $RRDUPDATE $BASE/$1.rrd $SSE:$RESULT
+    [ -r $RRD ] && $RRDUPDATE $RRD $SSE:$RESULT
   fi
 
   echo "$STAMP $1: $RESULT" >>$LOG
