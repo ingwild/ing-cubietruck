@@ -9,6 +9,7 @@ if [ -z "$1" ]; then
 fi
 
 LOG='/var/log/sensors.log'
+
 BASE='/srv/sensors'
 RRDTOOL='rrdtool';
 SENSOR=$1;
@@ -19,11 +20,13 @@ if [ -r "$RRD" ]; then
 fi
 
 $RRDTOOL create $RRD --start 1420063200 --step 300 \
-  DS:temp:GAUGE:600:-55:125 \
-  RRA:AVERAGE:0.5:1:105120 \
+  DS:temperature:GAUGE:600:-55:125 \
+  RRA:LAST:0.5:1:105120 \
   RRA:AVERAGE:0.5:12:8760 \
   RRA:AVERAGE:0.5:288:365 \
-  RRA:AVERAGE:0.5:8760:12
+  RRA:AVERAGE:0.5:8760:12 \
+  RRA:MIN:0.5:288:365 \
+  RRA:MAX:0.5:288:365
 
 IFS='
 '
@@ -35,7 +38,7 @@ for STR in $(cat $LOG); do
     VALUE=${BASH_REMATCH[2]}
 
     if [ "$VALUE" != '85' ]; then
-      $RRDTOOL update $RRD $SSE:$VALUE
+      $RRDTOOL update $RRD "$SSE:$VALUE"
     fi
 
   fi
