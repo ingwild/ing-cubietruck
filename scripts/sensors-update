@@ -1,6 +1,8 @@
 #!/bin/bash
 #
 # Update 1-Wire sensors files
+# Call wu-upload if needed
+#
 # Supposed to be run from crontab
 #
 
@@ -42,5 +44,9 @@ else
 
   echo "$STAMP $1: $RESULT" >>$LOG
 
+fi
+
+if [ $1 == 'ambient' ]; then
+  /usr/local/bin/wu-upload
 fi
 
