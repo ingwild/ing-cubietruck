@@ -1,0 +1,52 @@
+#!/usr/bin/perl -W
+
+use POSIX;
+use LWP::UserAgent;
+use HTTP::Request;
+use strict;
+
+my $id = "STATIONID";
+my $pass = "secret";
+my $wu = "http://weatherstation.wunderground.com/weatherstation/updateweatherstation.php";
+my $sensor = "/srv/sensors/ambient";
+my $software = "wu-upload";
+
+my $dateutc = `date -u "+%Y-%m-%d %H:%M:%S"`;
+$dateutc =~ s/ /+/g;
+$dateutc =~ s/:/\%3A/g;
+chomp($dateutc);
+
+my ($url, $response, $tempc, $tempf);
+
+sub post_url {
+
+  my ($url, $ua, $req, $resp, $resp_data);
+
+  ($url) = @_;
+
+  $ua = LWP::UserAgent->new;
+  $req = HTTP::Request->new(GET => $url);
+  $resp = $ua->simple_request($req);
+  $resp_data = $resp->content;
+
+  chomp($resp_data);
+  return $resp_data;
+
+}
+  
+open(SENSOR,"<$sensor") || die "Unable to open sensor file! ($sensor)";
+while (<SENSOR>) {
+  chomp;
+  $tempc = $_;
+}
+close(SENSOR);
+
+$tempf = sprintf("%.2f",9*$tempc/5+32);
+
+$url = "$wu?action=updateraw\&ID=$id\&PASSWORD=$pass\&dateutc=$dateutc\&tempf=$tempf\&softwaretype=$software";
+
+$response = post_url($url);
+if ( $response ne 'success' ) {
+  die "Error posting weather data! ($response)\n";
+}
+
