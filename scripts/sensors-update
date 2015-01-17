@@ -12,6 +12,8 @@ WHAT='temperature'
 BASE='/srv/sensors'
 LOG='/var/log/sensors.log'
 RRDUPDATE='rrdupdate'
+WUUPLOAD='wu-upload'
+PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
 
 declare -A S=( [kitchen]='659C55060000' [room]='978156060000' [heater]='3E3D5C060000' [ambient]='BE775C060000' [freezer]='898056060000' )
 
@@ -47,6 +49,6 @@ else
 fi
 
 if [ $1 == 'ambient' ]; then
-  /usr/local/bin/wu-upload
+  $WUUPLOAD | mail -E -s "$WUUPLOAD" root
 fi
 
