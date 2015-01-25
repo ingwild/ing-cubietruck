@@ -15,6 +15,7 @@ RRDUPDATE='rrdupdate'
 WUUPLOAD='wu-upload'
 PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
 
+# 1-Wire IDs
 declare -A S=( [kitchen]='659C55060000' [room]='978156060000' [heater]='3E3D5C060000' [ambient]='BE775C060000' [freezer]='898056060000' )
 
 if [ -z "$1" ]; then
@@ -22,32 +23,50 @@ if [ -z "$1" ]; then
   exit 1
 fi
 
+OUT="$BASE/$1"
+RRD=$BASE/$1.rrd
 ID=${S[$1]}
 
-if [ -z "$ID" ]; then
+if [ $1 == 'cpu' ]; then
+
+  # Cubietruck CPU sensor
+  RAW=$(cat /sys/devices/platform/sunxi-i2c.0/i2c-0/0-0034/temp1_input)
+  STATUS=$?
+
+  if [ $STATUS == 0 ]; then
+    RESULT=$(echo "scale=2;${RAW}/1000" | bc)
+  else
+    echo "CPU temperature sensor not found!"
+    exit 1
+  fi
+
+elif [ -z "$ID" ]; then
 
   echo 'Unknown sensor!'
   exit 1
 
 else
 
-  CMD="$PREFIX$ID/$WHAT"
-  RESULT=$($CMD 2>&1 | sed -e 's/^ *//')
+  # 1-Wire sensor
+  RESULT=$($PREFIX$ID/$WHAT 2>&1 | sed -e 's/^ *//')
   STATUS=$?
-  STAMP=$(date "+%b %d %H:%M:%S")
-  SSE=$(date -d "$STAMP" +%s)
-  OUT="$BASE/$1"
-  RRD=$BASE/$1.rrd
 
-  if [ $STATUS == 0 -a "$RESULT" != 85 ]; then
-    echo "$RESULT" >$OUT
-    [ -r $RRD ] && $RRDUPDATE $RRD $SSE:$RESULT
+  # 85 indicates problems with 1-Wire bus
+  if [ $STATUS != 0 -o "$RESULT" == 85 ]; then
+    echo 'Sensor data out of range!'
+    exit 1
   fi
-
-  echo "$STAMP $1: $RESULT" >>$LOG
 
 fi
 
+STAMP=$(date "+%b %d %H:%M:%S")
+SSE=$(date -d "$STAMP" +%s)
+
+echo "$RESULT" >$OUT
+echo "$STAMP $1: $RESULT" >>$LOG
+[ -r $RRD ] && $RRDUPDATE $RRD $SSE:$RESULT
+
+# Upload to Weather Underground
 if [ $1 == 'ambient' ]; then
   $WUUPLOAD | mail -E -s "$WUUPLOAD" root
 fi

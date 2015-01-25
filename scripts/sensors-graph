@@ -7,7 +7,7 @@
 RRDTOOL='rrdtool'
 DS='temperature'
 CF='LAST'
-SF='-tmp'
+SF=''
 
 BASE='/srv/sensors'
 
@@ -26,12 +26,14 @@ FOOTER="
   DEF:room=$BASE/room.rrd:$DS:$CF \
   DEF:ambient=$BASE/ambient.rrd:$DS:$CF \
   DEF:freezer=$BASE/freezer.rrd:$DS:$CF \
+  DEF:cpu=$BASE/cpu.rrd:$DS:$CF \
   LINE1:0#000000:Zero \
   LINE1:heater#FF0000:Heater \
   LINE1:kitchen#800080:Kitchen \
   LINE1:room#0000FF:Room \
   LINE1:ambient#008000:Ambient \
-  LINE1:freezer#7F462C:Freezer"
+  LINE1:freezer#7F462C:Freezer \
+  LINE1:cpu#AA0000:CPU"
 
 $RRDTOOL graph "$BASE/$DS-day$SF.png" \
   --title='Temperature (daily)' \
