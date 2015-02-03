@@ -23,7 +23,6 @@ if [ -z "$1" ]; then
   exit 1
 fi
 
-OUT="$BASE/$1"
 RRD=$BASE/$1.rrd
 ID=${S[$1]}
 
@@ -62,7 +61,6 @@ fi
 STAMP=$(date "+%b %d %H:%M:%S")
 SSE=$(date -d "$STAMP" +%s)
 
-echo "$RESULT" >$OUT
 echo "$STAMP $1: $RESULT" >>$LOG
 [ -r $RRD ] && $RRDUPDATE $RRD $SSE:$RESULT
 
