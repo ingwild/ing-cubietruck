@@ -66,6 +66,6 @@ echo "$STAMP $1: $RESULT" >>$LOG
 
 # Upload to Weather Underground
 if [ $1 == 'ambient' ]; then
-  $WUUPLOAD | mail -E -s "$WUUPLOAD" root
+  echo $RESULT | $WUUPLOAD | mail -E -s "$WUUPLOAD" root
 fi
 

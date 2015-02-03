@@ -8,7 +8,6 @@ use strict;
 my $id = "STATIONID";
 my $pass = "secret";
 my $wu = "http://weatherstation.wunderground.com/weatherstation/updateweatherstation.php";
-my $sensor = "/srv/sensors/ambient";
 my $software = "wu-upload";
 
 my $dateutc = `date -u "+%Y-%m-%d %H:%M:%S"`;
@@ -34,12 +33,10 @@ sub post_url {
 
 }
   
-open(SENSOR,"<$sensor") || die "Unable to open sensor file! ($sensor)";
-while (<SENSOR>) {
+while (<STDIN>) {
   chomp;
   $tempc = $_;
 }
-close(SENSOR);
 
 $tempf = sprintf("%.2f",9*$tempc/5+32);
 
