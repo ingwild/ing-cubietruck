@@ -23,6 +23,12 @@ if [ -z "$1" ]; then
   exit 1
 fi
 
+if [ "$2" == 'dump' ]; then
+  DUMP=1
+else
+  DUMP=0
+fi
+
 RRD=$BASE/$1.rrd
 ID=${S[$1]}
 
@@ -58,14 +64,22 @@ else
 
 fi
 
-STAMP=$(date "+%b %d %H:%M:%S")
-SSE=$(date -d "$STAMP" +%s)
+if [ $DUMP == 1 ]; then
 
-echo "$STAMP $1: $RESULT" >>$LOG
-[ -r $RRD ] && $RRDUPDATE $RRD $SSE:$RESULT
+  echo $RESULT
 
-# Upload to Weather Underground
-if [ $1 == 'ambient' ]; then
-  echo $RESULT | $WUUPLOAD | mail -E -s "$WUUPLOAD" root
+else
+
+  STAMP=$(date "+%b %d %H:%M:%S")
+  echo "$STAMP $1: $RESULT" >>$LOG
+
+  SSE=$(date -d "$STAMP" +%s)
+  [ -r $RRD ] && $RRDUPDATE $RRD $SSE:$RESULT
+
+  # Upload to Weather Underground
+  if [ $1 == 'ambient' ]; then
+    echo $RESULT | $WUUPLOAD | mail -E -s "$WUUPLOAD" root
+  fi
+
 fi
 

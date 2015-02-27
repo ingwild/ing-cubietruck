@@ -1,0 +1,43 @@
+#!/bin/bash
+#
+# Create SMS file and spool to smsd (smstools)
+#
+
+TO=$1
+TEXT=$2
+
+if [ -z "$TO" ]; then
+  echo -n "To: "
+  read TO
+  [ -z "$TO" ] && exit 1
+fi
+
+if [ -z "$TEXT" ]; then
+  echo -n "Text: "
+  read TEXT
+  [ -z "$TEXT" ] && exit 1
+fi
+
+T=$(mktemp -u smssend_XXXXXX)
+TMP=/tmp/$T
+
+echo "To: $TO" >>$TMP
+
+ALPHABET=""
+if ! echo -n "$TEXT" | iconv -t ISO-8859-15 >/dev/null 2>&1; then
+  ALPHABET="Alphabet: UCS"
+  echo "$ALPHABET" >>$TMP
+fi
+
+echo >>$TMP
+
+if [ -z "$ALPHABET" ]; then
+  echo -n "$TEXT" >>$TMP
+else
+  echo -n "$TEXT" | iconv -t UNICODEBIG >>$TMP
+fi
+
+umask 0027
+cat $TMP >/var/spool/sms/outgoing/$T &&
+rm $TMP
+

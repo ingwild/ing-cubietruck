@@ -1,0 +1,69 @@
+#!/bin/bash
+
+PATH=/usr/local/sbin:/usr/local/bin:$PATH
+CONFIG='/etc/sms'
+WHITELIST="$CONFIG/whitelist"
+ARCHIVE="/var/spool/sms/archive"
+LOG='/var/log/sms/smsctl.log'
+PFX="?"
+
+[ "$1" == 'RECEIVED' ] || exit 0
+[ -n "$2" ] || exit 0
+
+FILE=$2
+[ -r "$FILE" ] || exit 0
+F=`basename $FILE`
+
+log() {
+  MSG=$1
+  DATE="$(date '+%b %d %H:%M:%S')"
+  echo "$DATE $F - $MSG" >>$LOG
+}
+
+err() {
+  log "ERROR: $1"
+  exit 0
+}
+
+FROM=$(cat $FILE | egrep "^From: " | cut -d " " -f2)
+log "From: $FROM"
+
+ALLOW=0
+for PHONE in $(cat $WHITELIST); do
+  cat $FILE | grep "From: $PHONE" >/dev/null 2>&1
+  [ $? -eq 0 ] && ALLOW=1
+done;
+[ $ALLOW -eq 0 ] && err 'Access denied!'
+
+CMD=$(cat $FILE | egrep "^\\$PFX" | cut -d "$PFX" -f2)
+if [ -n "$CMD" ]; then
+  log "CMD: $CMD"
+else
+  err 'CMD not found!'
+fi
+
+OUT=''
+case "$CMD" in
+
+  'temp')
+    for SENSOR in cpu freezer ambient heater room kitchen ; do
+      O=$(sensors-update $SENSOR dump)
+      OUT="$SENSOR:$O $OUT"
+    done
+    log "Out: $OUT"
+    ;;
+
+  '*')
+    OUT='Unknown command!'
+    ;;
+
+esac
+
+TO=$FROM
+smssend $TO "$OUT"
+log "To: $TO"
+
+mv $FILE $ARCHIVE && log "Archived"
+
+exit 0
+
