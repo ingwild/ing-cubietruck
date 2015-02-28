@@ -1,0 +1,58 @@
+#!/bin/bash
+#
+# Dump sensor value
+#
+
+if [ -z "$1" ]; then
+  echo "Usage: $0 < sensor_name >"
+  exit 1
+fi
+
+if [ $1 == 'cpu' ]; then
+
+  # Cubietruck CPU sensor
+  RAW=$(cat /sys/devices/platform/sunxi-i2c.0/i2c-0/0-0034/temp1_input)
+  STATUS=$?
+
+  if [ $STATUS == 0 ]; then
+    RESULT=$(echo "scale=2;${RAW}/1000" | bc)
+  else
+    echo "CPU temperature sensor not found!"
+    exit 1
+  fi
+
+  echo $RESULT
+
+else
+
+  # Unique 1-Wire IDs
+  declare -A S=( [kitchen]='659C55060000' [room]='978156060000' [heater]='3E3D5C060000' [ambient]='BE775C060000' [freezer]='898056060000' )
+
+  ID=${S[$1]}
+  if [ -z "$ID" ]; then
+    echo 'Unknown sensor!'
+    exit 1
+
+  fi
+
+  # 1-Wire sensor
+  RESULT=$(owread 28.$ID/temperature | sed -e 's/^ *//')
+
+  # Empty result means owserver not installed or does not respond
+  if [ -z $RESULT ]; then
+    echo 'Sensor data undefined!'
+    exit 1
+  fi
+
+  # 85 indicates problems with 1-Wire bus
+  if [ "$RESULT" == 85 ]; then
+    echo 'Sensor data out of range!'
+    exit 1
+  fi
+
+  printf '%.2f' $RESULT
+
+fi
+
+exit 0
+
