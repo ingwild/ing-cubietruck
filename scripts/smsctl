@@ -1,6 +1,13 @@
 #!/bin/bash
+#
+# SMS informer with whitelist
+# Depends on sensor and smssend
+# Treat all incoming SMSs beginning with $PFX as commands
+#
 
 PATH=/usr/local/sbin:/usr/local/bin:$PATH
+SENSOR='sensor'
+SMSSEND='smssend'
 CONFIG='/etc/sms'
 WHITELIST="$CONFIG/whitelist"
 ARCHIVE="/var/spool/sms/archive"
@@ -8,10 +15,10 @@ LOG='/var/log/sms/smsctl.log'
 PFX="?"
 
 [ "$1" == 'RECEIVED' ] || exit 0
-[ -n "$2" ] || exit 0
+[ -n "$2" ] || exit 1
 
 FILE=$2
-[ -r "$FILE" ] || exit 0
+[ -r "$FILE" ] || exit 1
 F=`basename $FILE`
 
 log() {
@@ -22,11 +29,15 @@ log() {
 
 err() {
   log "ERROR: $1"
-  exit 0
+  exit 1
 }
 
 FROM=$(cat $FILE | egrep "^From: " | cut -d " " -f2)
-log "From: $FROM"
+if [ -n "$FROM" ]; then
+  log "From: $FROM"
+else
+  err 'Empty From: header!'
+fi
 
 ALLOW=0
 for PHONE in $(cat $WHITELIST); do
@@ -46,9 +57,9 @@ OUT=''
 case "$CMD" in
 
   'temp')
-    for SENSOR in cpu freezer ambient heater room kitchen ; do
-      O=$(sensors-update $SENSOR dump)
-      OUT="$SENSOR:$O $OUT"
+    for S in cpu freezer ambient heater room kitchen ; do
+      O=$($SENSOR $S)
+      [ -n $O ] && OUT="$S=$O $OUT"
     done
     log "Out: $OUT"
     ;;
@@ -59,9 +70,12 @@ case "$CMD" in
 
 esac
 
-TO=$FROM
-smssend $TO "$OUT"
-log "To: $TO"
+$SMSSEND $FROM "$OUT"
+if [ $? -eq 0 ]; then
+  log "To: $FROM"
+else
+  err "Sending failed!"
+fi
 
 mv $FILE $ARCHIVE && log "Archived"
 
