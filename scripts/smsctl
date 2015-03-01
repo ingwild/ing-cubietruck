@@ -64,20 +64,25 @@ case "$CMD" in
     log "Out: $OUT"
     ;;
 
+  'wake')
+    OUT=$(wake)
+    ;;
+
   '*')
     OUT='Unknown command!'
     ;;
 
 esac
 
-$SMSSEND $FROM "$OUT"
-if [ $? -eq 0 ]; then
-  log "To: $FROM"
-else
-  err "Sending failed!"
+if [ -n "$O" ]; then
+  $SMSSEND $FROM "$OUT"
+  if [ $? -eq 0 ]; then
+    log "To: $FROM"
+  else
+    err "Sending failed!"
+  fi
+  mv $FILE $ARCHIVE && log "Archived"
 fi
-
-mv $FILE $ARCHIVE && log "Archived"
 
 exit 0
 
