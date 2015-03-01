@@ -1,13 +1,14 @@
 #!/bin/bash
 #
 # SMS informer with whitelist
-# Depends on sensor and smssend
-# Treat all incoming SMSs beginning with $PFX as commands
+# Depends on mail, sensor and smssend
+# Treats all incoming SMSs beginning with $PFX as commands
 #
 
 PATH=/usr/local/sbin:/usr/local/bin:$PATH
 SENSOR='sensor'
 SMSSEND='smssend'
+MAIL='mail'
 CONFIG='/etc/sms'
 WHITELIST="$CONFIG/whitelist"
 ARCHIVE="/var/spool/sms/archive"
@@ -29,6 +30,7 @@ log() {
 
 err() {
   log "ERROR: $1"
+  echo "$1" | $MAIL -s "[smsctl] $F" root
   exit 1
 }
 
@@ -44,7 +46,7 @@ for PHONE in $(cat $WHITELIST); do
   cat $FILE | grep "From: $PHONE" >/dev/null 2>&1
   [ $? -eq 0 ] && ALLOW=1
 done;
-[ $ALLOW -eq 0 ] && err 'Access denied!'
+[ $ALLOW -eq 0 ] && err "Access denied! ($FROM)"
 
 CMD=$(cat $FILE | egrep "^\\$PFX" | cut -d "$PFX" -f2)
 if [ -n "$CMD" ]; then
