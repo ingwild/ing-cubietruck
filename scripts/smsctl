@@ -15,9 +15,11 @@ ARCHIVE="/var/spool/sms/archive"
 LOG='/var/log/sms/smsctl.log'
 PFX="?"
 
+# Only incoming SMS processed
 [ "$1" == 'RECEIVED' ] || exit 0
 [ -n "$2" ] || exit 1
 
+# Manual run?
 FILE=$2
 [ -r "$FILE" ] || exit 1
 F=`basename $FILE`
@@ -34,6 +36,7 @@ err() {
   exit 1
 }
 
+# Determine sender
 FROM=$(cat $FILE | egrep "^From: " | cut -d " " -f2)
 if [ -n "$FROM" ]; then
   log "From: $FROM"
@@ -41,6 +44,7 @@ else
   err 'Empty From: header!'
 fi
 
+# Check whitelist
 ALLOW=0
 for PHONE in $(cat $WHITELIST); do
   cat $FILE | grep "From: $PHONE" >/dev/null 2>&1
@@ -48,6 +52,7 @@ for PHONE in $(cat $WHITELIST); do
 done;
 [ $ALLOW -eq 0 ] && err "Access denied! ($FROM)"
 
+# Any commands in SMS ?
 CMD=$(cat $FILE | egrep "^\\$PFX" | cut -d "$PFX" -f2)
 if [ -n "$CMD" ]; then
   log "CMD: $CMD"
@@ -55,6 +60,7 @@ else
   err 'CMD not found!'
 fi
 
+# Action
 OUT=''
 case "$CMD" in
 
@@ -76,6 +82,7 @@ case "$CMD" in
 
 esac
 
+# Send reply if output is not empty
 if [ -n "$O" ]; then
   $SMSSEND $FROM "$OUT"
   if [ $? -eq 0 ]; then
