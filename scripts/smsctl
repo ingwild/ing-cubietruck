@@ -50,14 +50,23 @@ for PHONE in $(cat $WHITELIST); do
   cat $FILE | grep "From: $PHONE" >/dev/null 2>&1
   [ $? -eq 0 ] && ALLOW=1
 done;
-[ $ALLOW -eq 0 ] && err "Access denied! ($FROM)"
 
 # Any commands in SMS ?
+CMDFOUND=0
 CMD=$(cat $FILE | egrep "^\\$PFX" | cut -d "$PFX" -f2)
 if [ -n "$CMD" ]; then
+  CMDFOUND=1
   log "CMD: $CMD"
 else
-  err 'CMD not found!'
+  log 'CMD not found!'
+fi
+
+# Notify admin
+if [ $ALLOW -eq 0 -o $CMDFOUND -eq 0 ]; then
+  # Wipe unreadable characters
+  echo -e "$FILE:\n\n$(cat $FILE)" | tr -cd '\11\12\15\40-\176' | mail -s "[smsctl] New SMS ($F)" root
+  log "Notification sent (root)"
+  exit 0
 fi
 
 # Action
