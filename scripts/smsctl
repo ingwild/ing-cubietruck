@@ -1,13 +1,14 @@
 #!/bin/bash
 #
 # SMS informer with whitelist
-# Depends on mail, sensor and smssend
+# Depends on mail, sms2utf8, sensor and smssend
 # Treats all incoming SMSs beginning with $PFX as commands
 #
 
 PATH=/usr/local/sbin:/usr/local/bin:$PATH
 SENSOR='sensor'
 SMSSEND='smssend'
+SMS2UTF8='sms2utf8'
 MAIL='mail'
 CONFIG='/etc/sms'
 WHITELIST="$CONFIG/whitelist"
@@ -56,15 +57,14 @@ CMDFOUND=0
 CMD=$(cat $FILE | egrep "^\\$PFX" | cut -d "$PFX" -f2)
 if [ -n "$CMD" ]; then
   CMDFOUND=1
-  log "CMD: $CMD"
+  log "> $CMD"
 else
-  log 'CMD not found!'
+  log 'Command not found!'
 fi
 
 # Notify admin
 if [ $ALLOW -eq 0 -o $CMDFOUND -eq 0 ]; then
-  # Wipe unreadable characters
-  echo -e "$FILE:\n\n$(cat $FILE)" | tr -cd '\11\12\15\40-\176' | mail -s "[smsctl] New SMS ($F)" root
+  cat $FILE | $SMS2UTF8 | mail -s "[smsctl] Incoming SMS ($F)" root
   log "Notification sent (root)"
   exit 0
 fi
@@ -78,7 +78,7 @@ case "$CMD" in
       O=$($SENSOR $S)
       [ -n $O ] && OUT="$S=$O $OUT"
     done
-    log "Out: $OUT"
+    log "< $OUT"
     ;;
 
   'wake')
@@ -99,7 +99,6 @@ if [ -n "$O" ]; then
   else
     err "Sending failed!"
   fi
-  mv $FILE $ARCHIVE && log "Archived"
 fi
 
 exit 0

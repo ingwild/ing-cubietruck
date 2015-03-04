@@ -1,0 +1,46 @@
+#!/usr/bin/perl -W
+#
+# This script converts SMS (ISO headers and ISO,UCS-2BE,UTF-8 body) to UTF-8
+#
+
+use strict;
+use Encode; 
+
+binmode STDOUT, ":utf8";
+
+my $ucs = 0;
+my $body = 0;
+my $charset = '';
+
+while (<>) {
+
+  $charset = $1 if (/^Alphabet: (.*)$/);
+
+  if ($_ eq "\n") {
+    $body = 1;
+    print $_;
+    next;
+  }
+
+  if ($body == 1) {
+
+    if ($charset eq 'UCS2') {
+      $_ = decode('UCS-2BE',$_);
+    } elsif (($charset eq 'ISO') || ($charset eq 'UTF-8')) {
+      $_ = $_;
+    } else {
+      print "Unknown SMS charset! ($charset)\n";
+      exit 1;
+    }
+
+  } else {
+
+    $_ =~ tr/\11\12\15\40-\176/_/c;
+
+  }
+
+  print $_;
+
+}
+
+
