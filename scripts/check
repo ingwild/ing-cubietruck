@@ -1,0 +1,95 @@
+#!/bin/bash
+#
+#  Multiple checks with notification by email or SMS
+#
+#  /etc/sms/admin should be readable and contain alert phone number
+#
+
+PATH=/usr/local/sbin:/usr/local/bin:$PATH
+HOST=$(hostname)
+
+AF='/etc/sms/admin'
+if [ -r "$AF" ]; then
+  ADMIN=$(cat "$AF" | tail -n1)
+else
+  echo "Unable to get alert phone number ($AF)"
+  exit 1
+fi
+
+LOG='/var/log/check.log'
+
+MAIL=1
+SMS=1
+
+BASE='/var/spool/check'
+[ -d $BASE -a -w "$BASE" ] || exit 1
+
+CPU_CHECK=1
+CPU_LOW=40
+CPU_HIGH=50
+CPU_FLAG="$BASE/cpu_flag"
+CPU_LOCK="$BASE/cpu_lock"
+CPU_TRES_FILE="$BASE/cpu_tres"
+CPU_TRES=3600
+
+logg() {
+  echo "$(date '+%F %T') $1" >>$LOG
+}
+
+alert() {
+
+  logg "$1: $2"
+
+  if [ $MAIL == 1 ]; then
+    echo "$1: $2" | mail -s "[check] $1" root
+    logg "email alert sent"
+  fi
+
+  if [ $SMS == 1 ]; then
+    smssend $ADMIN "$1: $2"
+    logg "SMS alert sent"
+  fi
+
+}
+
+cpu() {
+
+  if [ -r "$CPU_TRES_FILE" ]; then
+    let D=$(date +%s)-$(stat --format=%Y $CPU_TRES_FILE)
+    if [ $D -ge $CPU_TRES ]; then
+      rm -f $CPU_TRES_FILE
+      logg "rm $CPU_TRES_FILE"
+    else
+      return 0
+    fi
+  fi
+
+  let T=$(cat /sys/devices/platform/sunxi-i2c.0/i2c-0/0-0034/temp1_input)/1000
+  [ $? -gt 0 ] && return 1
+
+  if [ $T -gt $CPU_HIGH -a ! -r "$CPU_FLAG" ]; then
+    alert "CPU overheat ($HOST)" $T
+    touch "$CPU_FLAG"
+    logg "touch $CPU_FLAG"
+  elif [ $T -lt $CPU_LOW -a -r "$CPU_FLAG" ]; then
+    alert "CPU norm ($HOST)" $T
+    rm -f "$CPU_FLAG"
+    logg "rm $CPU_FLAG"
+    touch "$CPU_TRES_FILE"
+    logg "touch $CPU_TRES_FILE"
+  fi
+
+  return 0
+
+}
+
+if [ "$1" == 'cpu' -o $CPU_CHECK == 1 ]; then
+
+  cpu
+
+  if [ $? -gt 0 ]; then
+    logg "CPU check FAILED"
+  fi
+
+fi
+
