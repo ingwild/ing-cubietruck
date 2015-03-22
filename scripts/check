@@ -17,7 +17,6 @@ else
 fi
 
 LOG='/var/log/check.log'
-
 MAIL=1
 SMS=1
 
@@ -28,9 +27,16 @@ CPU_CHECK=1
 CPU_LOW=40
 CPU_HIGH=50
 CPU_FLAG="$BASE/cpu_flag"
-CPU_LOCK="$BASE/cpu_lock"
 CPU_TRES_FILE="$BASE/cpu_tres"
 CPU_TRES=3600
+
+AC_CHECK=1
+AC_FILE='/sys/class/power_supply/ac/uevent'
+AC_FLAG="$BASE/ac_flag"
+
+BATTERY_CHECK=1
+BATTERY_FILE='/sys/class/power_supply/battery/uevent'
+BATTERY_FLAG="$BASE/battery_flag"
 
 logg() {
   echo "$(date '+%F %T') $1" >>$LOG
@@ -52,7 +58,7 @@ alert() {
 
 }
 
-cpu() {
+check_cpu() {
 
   if [ -r "$CPU_TRES_FILE" ]; then
     let D=$(date +%s)-$(stat --format=%Y $CPU_TRES_FILE)
@@ -83,13 +89,60 @@ cpu() {
 
 }
 
-if [ "$1" == 'cpu' -o $CPU_CHECK == 1 ]; then
+check_ac() {
 
-  cpu
+  AC_STATUS=$(cat $AC_FILE 2>/dev/null | sed -e '/^POWER_SUPPLY_ONLINE=/!d; s///')
 
-  if [ $? -gt 0 ]; then
-    logg "CPU check FAILED"
+  [ -z "$AC_STATUS" ] && return 1
+
+  if [ $AC_STATUS -ne 1 -a ! -r "$AC_FLAG" ]; then
+    alert AC "Failed ($AC_STATUS)"
+    touch "$AC_FLAG"
+    logg "touch $AC_FLAG"
+  elif [ $AC_STATUS -eq 1 -a -r "$AC_FLAG" ]; then
+    alert AC "Restored ($AC_STATUS)"
+    rm "$AC_FLAG"
+    logg "rm $AC_FLAG"
   fi
 
+}
+
+check_battery() {
+
+  BATTERY_STATUS=$(cat $BATTERY_FILE 2>/dev/null | sed -e '/^POWER_SUPPLY_CAPACITY=/!d; s///')
+
+  [ -z "$BATTERY_STATUS" ] && return 1
+
+  if [ $BATTERY_STATUS -le 10 -a ! -r "$BATTERY_FLAG" ]; then
+    alert BATTERY "Low ($BATTERY_STATUS)"
+    touch "$BATTERY_FLAG"
+    logg "touch $BATTERY_FLAG"
+  elif [ $BATTERY_STATUS -eq 100 -a -r "$BATTERY_FLAG" ]; then
+    alert BATTERY "Full ($BATTERY_STATUS)"
+    rm "$BATTERY_FLAG"
+    logg "rm $BATTERY_FLAG"
+  fi
+
+}
+
+if [ "$1" == 'cpu' -o $CPU_CHECK == 1 ]; then
+  check_cpu
+  if [ $? -gt 0 ]; then
+    logg 'CPU: unknown status'
+  fi
+fi
+
+if [ "$1" == 'ac' -o $AC_CHECK == 1 ]; then
+  check_ac
+  if [ $? -gt 0 ]; then
+    logg "AC: unknown status"
+  fi
+fi
+
+if [ "$1" == 'battery' -o $BATTERY_CHECK == 1 ]; then
+  check_battery
+  if [ $? -gt 0 ]; then
+    logg "BATTERY: unknown status"
+  fi
 fi
 
