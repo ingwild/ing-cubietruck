@@ -36,8 +36,8 @@ AC_FLAG="$BASE/ac_flag"
 
 BATTERY_CHECK=1
 BATTERY_FILE='/sys/class/power_supply/battery/uevent'
-BATTETY_LOW=10
-BATTETY_HIGH=100
+BATTERY_LOW=10
+BATTERY_HIGH=100
 BATTERY_FLAG="$BASE/battery_flag"
 
 logg() {
