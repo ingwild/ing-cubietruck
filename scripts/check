@@ -27,8 +27,8 @@ CPU_CHECK=1
 CPU_LOW=40
 CPU_HIGH=50
 CPU_FLAG="$BASE/cpu_flag"
-CPU_TRES_FILE="$BASE/cpu_tres"
 CPU_TRES=3600
+CPU_TRES_FILE="$BASE/cpu_tres"
 
 AC_CHECK=1
 AC_FILE='/sys/class/power_supply/ac/uevent'
@@ -36,6 +36,8 @@ AC_FLAG="$BASE/ac_flag"
 
 BATTERY_CHECK=1
 BATTERY_FILE='/sys/class/power_supply/battery/uevent'
+BATTETY_LOW=10
+BATTETY_HIGH=100
 BATTERY_FLAG="$BASE/battery_flag"
 
 logg() {
@@ -113,11 +115,11 @@ check_battery() {
 
   [ -z "$BATTERY_STATUS" ] && return 1
 
-  if [ $BATTERY_STATUS -le 10 -a ! -r "$BATTERY_FLAG" ]; then
+  if [ $BATTERY_STATUS -le $BATTERY_LOW -a ! -r "$BATTERY_FLAG" ]; then
     alert BATTERY "Low ($BATTERY_STATUS)"
     touch "$BATTERY_FLAG"
     logg "touch $BATTERY_FLAG"
-  elif [ $BATTERY_STATUS -eq 100 -a -r "$BATTERY_FLAG" ]; then
+  elif [ $BATTERY_STATUS -ge $BATTERY_HIGH -a -r "$BATTERY_FLAG" ]; then
     alert BATTERY "Full ($BATTERY_STATUS)"
     rm "$BATTERY_FLAG"
     logg "rm $BATTERY_FLAG"
