@@ -1,0 +1,30 @@
+#!/bin/bash
+#
+# Send alerts by various means (email, SMS)
+#
+# Depends on: cat, tail, date, mail, smssend
+#
+# /etc/sms/admin should be readable and contain phone number
+# /var/log/alert.log should be writable
+#
+
+PATH=/usr/local/sbin:/usr/local/bin:$PATH
+LOG='/var/log/alert.log'
+
+if [ -z "$1" -o -z "$2" ]; then 
+  echo "Syntax: alert <subject> <message>"
+  exit 1
+fi
+
+AF='/etc/sms/admin'
+if [ -r "$AF" ]; then
+  ADMIN=$(cat "$AF" | tail -n1)
+else
+  echo "Unable to get alert phone number ($AF)"
+  exit 1
+fi
+
+echo "$(date '+%F %T') $1: $2" >>$LOG
+echo "$2" | mail -s "[$1] $2" root
+smssend $ADMIN "$1: $2"
+
