@@ -1,44 +1,35 @@
 #!/bin/bash
 #
-#  Multiple checks with notification by email or SMS
+# Multiple checks with notification by email or SMS
 #
-#  /etc/sms/admin should be readable and contain alert phone number
+# Depends on: date, stat, rm, touch, cat, sed, alert
+# Runs on Cubietruck with sunxi kernel (/sys/class/power checks)
 #
 
 PATH=/usr/local/sbin:/usr/local/bin:$PATH
-HOST=$(hostname)
-
-AF='/etc/sms/admin'
-if [ -r "$AF" ]; then
-  ADMIN=$(cat "$AF" | tail -n1)
-else
-  echo "Unable to get alert phone number ($AF)"
-  exit 1
-fi
-
-LOG='/var/log/check.log'
-MAIL=1
-SMS=1
-
-BASE='/var/spool/check'
-[ -d $BASE -a -w "$BASE" ] || exit 1
+SCRIPT='check'
+LOG="/var/log/$SCRIPT.log"
+SPOOL="/var/spool/$SCRIPT"
+ALERT='/usr/local/bin/alert'
 
 CPU_CHECK=1
 CPU_LOW=40
 CPU_HIGH=50
-CPU_FLAG="$BASE/cpu_flag"
+CPU_FLAG="$SPOOL/cpu_flag"
 CPU_TRES=3600
-CPU_TRES_FILE="$BASE/cpu_tres"
+CPU_TRES_FILE="$SPOOL/cpu_tres"
 
 AC_CHECK=1
 AC_FILE='/sys/class/power_supply/ac/uevent'
-AC_FLAG="$BASE/ac_flag"
+AC_FLAG="$SPOOL/ac_flag"
 
 BATTERY_CHECK=1
 BATTERY_FILE='/sys/class/power_supply/battery/uevent'
 BATTERY_LOW=10
 BATTERY_HIGH=100
-BATTERY_FLAG="$BASE/battery_flag"
+BATTERY_FLAG="$SPOOL/battery_flag"
+
+[ ! -d "$SPOOL" -o ! -w "$SPOOL" ] && exit 1
 
 logg() {
   echo "$(date '+%F %T') $1" >>$LOG
@@ -46,17 +37,8 @@ logg() {
 
 alert() {
 
-  logg "$1: $2"
-
-  if [ $MAIL == 1 ]; then
-    echo "$1: $2" | mail -s "[check] $1" root
-    logg "email alert sent"
-  fi
-
-  if [ $SMS == 1 ]; then
-    smssend $ADMIN "$1: $2"
-    logg "SMS alert sent"
-  fi
+  logg "$1"
+  $ALERT "$SCRIPT" "$1"
 
 }
 
@@ -76,11 +58,11 @@ check_cpu() {
   [ $? -gt 0 ] && return 1
 
   if [ $T -gt $CPU_HIGH -a ! -r "$CPU_FLAG" ]; then
-    alert "CPU overheat ($HOST)" $T
+    alert "CPU overheat ($T)"
     touch "$CPU_FLAG"
     logg "touch $CPU_FLAG"
   elif [ $T -lt $CPU_LOW -a -r "$CPU_FLAG" ]; then
-    alert "CPU norm ($HOST)" $T
+    alert "CPU norm ($T)"
     rm -f "$CPU_FLAG"
     logg "rm $CPU_FLAG"
     touch "$CPU_TRES_FILE"
@@ -98,11 +80,11 @@ check_ac() {
   [ -z "$AC_STATUS" ] && return 1
 
   if [ $AC_STATUS -ne 1 -a ! -r "$AC_FLAG" ]; then
-    alert AC "Failed ($AC_STATUS)"
+    alert "AC failed ($AC_STATUS)"
     touch "$AC_FLAG"
     logg "touch $AC_FLAG"
   elif [ $AC_STATUS -eq 1 -a -r "$AC_FLAG" ]; then
-    alert AC "Restored ($AC_STATUS)"
+    alert "AC restored ($AC_STATUS)"
     rm "$AC_FLAG"
     logg "rm $AC_FLAG"
   fi
@@ -116,11 +98,11 @@ check_battery() {
   [ -z "$BATTERY_STATUS" ] && return 1
 
   if [ $BATTERY_STATUS -le $BATTERY_LOW -a ! -r "$BATTERY_FLAG" ]; then
-    alert BATTERY "Low ($BATTERY_STATUS)"
+    alert "BATTERY low ($BATTERY_STATUS)"
     touch "$BATTERY_FLAG"
     logg "touch $BATTERY_FLAG"
   elif [ $BATTERY_STATUS -ge $BATTERY_HIGH -a -r "$BATTERY_FLAG" ]; then
-    alert BATTERY "Full ($BATTERY_STATUS)"
+    alert "BATTERY full ($BATTERY_STATUS)"
     rm "$BATTERY_FLAG"
     logg "rm $BATTERY_FLAG"
   fi
