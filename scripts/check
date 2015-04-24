@@ -2,7 +2,7 @@
 #
 # Multiple checks with notification by email or SMS
 #
-# Depends on: date, stat, rm, touch, cat, sed, alert
+# Depends on: date, stat, rm, touch, cat, sed, awk, tr, alert, transmission-remote
 # Runs on Cubietruck with sunxi kernel (/sys/class/power checks)
 #
 
@@ -28,6 +28,10 @@ BATTERY_FILE='/sys/class/power_supply/battery/uevent'
 BATTERY_LOW=10
 BATTERY_HIGH=100
 BATTERY_FLAG="$SPOOL/battery_flag"
+
+TRANSMISSION_CHECK=1
+TRANSMISSION_REMOTE='/usr/bin/transmission-remote'
+TRANSMISSION_NAME_TRUNK=18
 
 [ ! -d "$SPOOL" -o ! -w "$SPOOL" ] && exit 1
 
@@ -109,6 +113,21 @@ check_battery() {
 
 }
 
+check_transmission() {
+
+  TORRENT_ID=$($TRANSMISSION_REMOTE -l | awk '/\*/ { print $1; exit }' | tr -d '*')
+
+  [ -z "$TORRENT_ID" ] && return 0
+
+  $TRANSMISSION_REMOTE -t $TORRENT_ID -S
+  logg "TORRENT paused ($TORRENT_ID)"
+
+  NAME=$($TRANSMISSION_REMOTE -t $TORRENT_ID -i | grep '  Name: ' | cut -d: -f2-)
+  T=${NAME:1:$TRANSMISSION_NAME_TRUNK}
+  alert "TORRENT expired ($T)"
+
+}
+
 if [ "$1" == 'cpu' -o $CPU_CHECK == 1 ]; then
   check_cpu
   if [ $? -gt 0 ]; then
@@ -127,6 +146,13 @@ if [ "$1" == 'battery' -o $BATTERY_CHECK == 1 ]; then
   check_battery
   if [ $? -gt 0 ]; then
     logg "BATTERY: unknown status"
+  fi
+fi
+
+if [ "$1" == 'transmission' -o $TRANSMISSION_CHECK == 1 ]; then
+  check_transmission
+  if [ $? -gt 0 ]; then
+    logg "TRANSMISSION: unknown status"
   fi
 fi
 
