@@ -119,12 +119,12 @@ check_transmission() {
 
   [ -z "$TORRENT_ID" ] && return 0
 
-  $TRANSMISSION_REMOTE -t $TORRENT_ID -S
-  logg "TORRENT paused ($TORRENT_ID)"
-
   NAME=$($TRANSMISSION_REMOTE -t $TORRENT_ID -i | grep '  Name: ' | cut -d: -f2-)
-  T=${NAME:1:$TRANSMISSION_NAME_TRUNK}
-  alert "TORRENT expired ($T)"
+  COMMENT=$($TRANSMISSION_REMOTE -t $TORRENT_ID -i | grep '  Comment: ' | cut -d: -f2-)
+  echo -e "Torrent expired:\n\n$NAME\n$COMMENT" | mail -s "[transmission] Torrent expired" root
+
+  $TRANSMISSION_REMOTE -t $TORRENT_ID -r >/dev/null 2>&1
+  logg "TORRENT removed ($TORRENT_ID)"
 
 }
 
