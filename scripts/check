@@ -13,8 +13,8 @@ SPOOL="/var/spool/$SCRIPT"
 ALERT='/usr/local/bin/alert'
 
 CPU_CHECK=1
-CPU_LOW=40
-CPU_HIGH=50
+CPU_LOW=45
+CPU_HIGH=55
 CPU_FLAG="$SPOOL/cpu_flag"
 CPU_TRES=3600
 CPU_TRES_FILE="$SPOOL/cpu_tres"
