@@ -119,9 +119,10 @@ check_transmission() {
 
   [ -z "$TORRENT_ID" ] && return 0
 
+  LOCATION=$($TRANSMISSION_REMOTE -t $TORRENT_ID -i | grep '  Location: ' | cut -d: -f2-)
   NAME=$($TRANSMISSION_REMOTE -t $TORRENT_ID -i | grep '  Name: ' | cut -d: -f2-)
   COMMENT=$($TRANSMISSION_REMOTE -t $TORRENT_ID -i | grep '  Comment: ' | cut -d: -f2-)
-  echo -e "Torrent expired:\n\n$NAME\n$COMMENT" | mail -s "[transmission] Torrent expired" root
+  echo -e "Torrent expired:\n\n$LOCATION\n$NAME\n$COMMENT" | mail -s "[transmission] Torrent expired" root
 
   $TRANSMISSION_REMOTE -t $TORRENT_ID -r >/dev/null 2>&1
   logg "TORRENT removed ($TORRENT_ID)"
