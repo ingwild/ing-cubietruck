@@ -4,5 +4,5 @@ NR == 1 { min = $5; max = $5; sum = 0 }
 { min = min < $5 ? min : $5 }
 { max = max > $5 ? max : $5 }
 { sum = sum+$5; avg = sum/NR }
-END { printf("%.2f %.2f %.2f",min,max,avg); }
+END { printf("min:%.2f avg:%.2f max:%.2f\n",min,avg,max); }
 
